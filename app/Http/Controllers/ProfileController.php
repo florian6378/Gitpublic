@@ -1,60 +1,36 @@
 <?php
 
-namespace App\Http\Controllers;
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\PageController;
+use App\Http\Controllers\PostController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\ProfileController;
 
-use App\Http\Requests\ProfileUpdateRequest;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Redirect;
-use Illuminate\View\View;
 
-class ProfileController extends Controller
-{
-    /**
-     * Display the user's profile form.
-     */
-    public function edit(Request $request): View
-    {
-        return view('profile.edit', [
-            'user' => $request->user(),
-        ]);
-    }
+// Routes publiques
+Route::get('/', [PageController::class, 'welcome'])->name('bienvenue');
+Route::get('/mentionlegale',[PageController::class, 'mentionlegale'])->name('mention');
+Route::get('/about',[PageController::class, 'about'])->name('about');
+Route::get('/test', [PageController::class, 'test'])->name('test');
 
-    /**
-     * Update the user's profile information.
-     */
-    public function update(ProfileUpdateRequest $request): RedirectResponse
-    {
-        $request->user()->fill($request->validated());
+// Routes nécessitant l'authentification
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/dashboard', function () {
+        return view('dashboard');
+    })->name('dashboard');
+    Route::get('/dashboard/Mespost', [PageController::class, 'Mespost'])->name('mesposts');
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
-        }
 
-        $request->user()->save();
+    
+    // Routes pour les posts
+    Route::resource('posts', PostController::class);
 
-        return Redirect::route('profile.edit')->with('status', 'profile-updated');
-    }
+    // Routes pour les catégories
+    Route::resource('categories', CategoryController::class);
 
-    /**
-     * Delete the user's account.
-     */
-    public function destroy(Request $request): RedirectResponse
-    {
-        $request->validateWithBag('userDeletion', [
-            'password' => ['required', 'current_password'],
-        ]);
+    // Routes pour le profil utilisateur
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');});
 
-        $user = $request->user();
-
-        Auth::logout();
-
-        $user->delete();
-
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        return Redirect::to('/');
-    }
-}
+require __DIR__.'/auth.php';
